@@ -30,13 +30,12 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: g-riye/alist-strm
+        images: g-riye/alist-strm:main
         tags: |
           type=ref,event=branch
           type=ref,event=pr
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-          type=sha,prefix={{branch}}-sha-
           
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
