@@ -30,7 +30,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: g-riye/alist-strm:main
+        images: g-riye/alist-strm
         tags: |
           type=ref,event=branch
           type=ref,event=pr
