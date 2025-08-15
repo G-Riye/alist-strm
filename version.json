@@ -1,9 +1,9 @@
 {
     "stable": {
-        "version": "6.0.3",
-        "release_date": "2024-10-08",
-        "download_url": "https://your-server.com/downloads/stable-v6.1.0.zip",
-        "changelog": "修复了部分bug，优化了性能。"
+        "version": "6.0.7",
+        "release_date": "2025-01-15",
+        "download_url": "https://your-server.com/downloads/stable-v6.0.7.zip",
+        "changelog": "新增STRM文件后缀功能，支持自定义STRM文件后缀，添加手动生成STRM文件功能。"
     },
     "beta": {
         "version": "6.1.0-beta",
