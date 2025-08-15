@@ -6,7 +6,8 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
-
+  release:
+    types: [published]
 jobs:
   build:
     runs-on: ubuntu-latest
