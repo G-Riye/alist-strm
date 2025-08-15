@@ -292,6 +292,7 @@ def edit_config(config_id):
             download_interval_range = request.form.get('download_interval_range', '1-3')  # 保持为字符串
             download_enabled = int(request.form.get('download_enabled', 0))  # 获取是否启用下载功能，默认0（禁用）
             update_mode = request.form['update_mode']  # 获取更新模式
+            strm_suffix = request.form.get('strm_suffix', '-转码')  # 获取strm文件后缀
 
             # 前端验证已经做过，这里做后端验证
             if not validate_download_interval_range(download_interval_range):
@@ -305,9 +306,9 @@ def edit_config(config_id):
             # 更新配置，包括下载启用状态、更新模式和大小阈值
             db_handler.cursor.execute('''
                 UPDATE config 
-                SET config_name = ?, url = ?, username = ?, password = ?, rootpath = ?, target_directory = ?, download_enabled = ?, update_mode = ?, download_interval_range = ?
+                SET config_name = ?, url = ?, username = ?, password = ?, rootpath = ?, target_directory = ?, download_enabled = ?, update_mode = ?, download_interval_range = ?, strm_suffix = ?
                 WHERE config_id = ?
-            ''', (config_name, url, username, password, rootpath, target_directory, download_enabled, update_mode, download_interval_range, config_id))
+            ''', (config_name, url, username, password, rootpath, target_directory, download_enabled, update_mode, download_interval_range, strm_suffix, config_id))
             db_handler.conn.commit()
 
             flash('配置已成功更新！', 'success')
@@ -315,7 +316,7 @@ def edit_config(config_id):
 
         # GET 请求时，获取并显示现有的配置项
         db_handler.cursor.execute('''
-            SELECT config_name, url, username, password, rootpath, target_directory, download_enabled, update_mode, download_interval_range 
+            SELECT config_name, url, username, password, rootpath, target_directory, download_enabled, update_mode, download_interval_range, strm_suffix 
             FROM config 
             WHERE config_id = ?
         ''', (config_id,))
@@ -350,6 +351,7 @@ def new_config():
             download_interval_range = request.form.get('download_interval_range', '1-3')  # 保持为字符串
             download_enabled = int(request.form.get('download_enabled', 0))  # 获取是否启用下载功能，默认0（禁用）
             update_mode = request.form['update_mode']  # 获取更新模式
+            strm_suffix = request.form.get('strm_suffix', '-转码')  # 获取strm文件后缀
 
             # 前端验证已经做过，这里做后端验证
             if not validate_download_interval_range(download_interval_range):
@@ -362,9 +364,9 @@ def new_config():
 
             # 插入新配置到数据库，确保所有字段都被插入
             db_handler.cursor.execute('''
-                INSERT INTO config (config_name, url, username, password, rootpath, target_directory, download_interval_range, download_enabled, update_mode) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (config_name, url, username, password, rootpath, target_directory, download_interval_range, download_enabled, update_mode))
+                INSERT INTO config (config_name, url, username, password, rootpath, target_directory, download_interval_range, download_enabled, update_mode, strm_suffix) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (config_name, url, username, password, rootpath, target_directory, download_interval_range, download_enabled, update_mode, strm_suffix))
             db_handler.conn.commit()
 
             flash('新配置已成功添加！', 'success')
@@ -381,7 +383,7 @@ def new_config():
 def copy_config(config_id):
     try:
         # 查询要复制的配置
-        db_handler.cursor.execute('SELECT config_name, url, username, password, rootpath, target_directory, download_interval_range, download_enabled, update_mode FROM config WHERE config_id = ?', (config_id,))
+        db_handler.cursor.execute('SELECT config_name, url, username, password, rootpath, target_directory, download_interval_range, download_enabled, update_mode, strm_suffix FROM config WHERE config_id = ?', (config_id,))
         config = db_handler.cursor.fetchone()
 
         if not config:
@@ -392,9 +394,9 @@ def copy_config(config_id):
         new_name = config[0] + " - 复制"
 
         db_handler.cursor.execute('''
-            INSERT INTO config (config_name, url, username, password, rootpath, target_directory, download_interval_range, download_enabled, update_mode) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (new_name, config[1], config[2], config[3], config[4], config[5], config[6], config[7], config[8]))
+            INSERT INTO config (config_name, url, username, password, rootpath, target_directory, download_interval_range, download_enabled, update_mode, strm_suffix) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (new_name, config[1], config[2], config[3], config[4], config[5], config[6], config[7], config[8], config[9]))
 
         # 提交事务
         db_handler.conn.commit()
@@ -570,6 +572,29 @@ def run_selected_configs():
             run_config(int(config_id))  # 调用 `run_config` 函数来运行 main.py
         flash('选定的配置已开始运行！', 'success')
 
+    return redirect(url_for('configs'))
+
+@app.route('/generate_strm_files/<int:config_id>', methods=['POST'])
+def generate_strm_files(config_id):
+    try:
+        # 检查配置是否存在
+        config = db_handler.get_webdav_config(config_id)
+        if not config:
+            flash(f'配置ID {config_id} 不存在', 'error')
+            return redirect(url_for('configs'))
+        
+        # 启动strm文件生成进程
+        strm_validator_path = os.path.join(os.getcwd(), 'strm_validator.py')
+        if os.path.exists(strm_validator_path):
+            command = f"python3.9 {strm_validator_path} {config_id} generate"
+            logger.info(f"启动配置ID: {config_id} 的strm文件生成命令: {command}")
+            subprocess.Popen(command, shell=True)
+            flash(f'配置 {config["config_name"]} 的strm文件生成已开始！', 'success')
+        else:
+            flash('无法找到 strm_validator.py 文件', 'error')
+    except Exception as e:
+        flash(f'启动strm文件生成时出错: {e}', 'error')
+    
     return redirect(url_for('configs'))
 
 @app.route('/scheduled_tasks')

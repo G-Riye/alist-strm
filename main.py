@@ -78,7 +78,7 @@ def compare_directory_trees(cached_tree, current_tree):
             return False
     return True
 
-def build_local_directory_tree(local_root, script_config, logger):
+def build_local_directory_tree(local_root, script_config, logger, config=None):
     """
     构建本地目录树，包括所有 .strm 文件和其他需要下载的元数据文件的信息。
     """
@@ -216,7 +216,10 @@ def create_strm_file(file_name, file_size, config, video_formats, local_director
     http_link = f"{config['protocol']}://{config['host']}:{config['port']}/d{clean_file_name}"
 
     decoded_file_name = unquote(file_name).replace('/dav/', '')  # 解码为中文
-    strm_file_name = os.path.splitext(os.path.basename(decoded_file_name))[0] + ".strm"
+    # 获取配置中的strm后缀，默认为'-转码'
+    strm_suffix = config.get('strm_suffix', '-转码')
+    base_name = os.path.splitext(os.path.basename(decoded_file_name))[0]
+    strm_file_name = base_name + strm_suffix + ".strm"
     strm_file_path = os.path.join(local_directory, strm_file_name)
 
     # 检查本地是否已存在 .strm 文件（使用本地目录树）
@@ -362,7 +365,7 @@ def process_with_cache(webdav, config, script_config, config_id, size_threshold,
         logger.error("缺少协议、主机或端口，无法构建 API URL。")
 
     # 加载本地目录树（增量更新和全量更新都需要使用）
-    local_tree = build_local_directory_tree(config['target_directory'], script_config, logger)
+            local_tree = build_local_directory_tree(config['target_directory'], script_config, logger, config)
 
     if config.get('update_mode') == 'incremental':
         logger.info("正在执行增量更新...")
