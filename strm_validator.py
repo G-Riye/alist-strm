@@ -79,12 +79,17 @@ class StrmValidator:
 
     def list_local_strm_files(self):
         strm_files = []
+        # 获取配置中的strm后缀，默认为'-转码'
+        strm_suffix = self.config.get('strm_suffix', '-转码')
+        
         for root, dirs, files in os.walk(self.target_directory):
             for file in files:
                 if file.lower().endswith('.strm'):
-                    full_path = os.path.abspath(os.path.join(root, file))
-                    strm_files.append(full_path)
-        self.logger.info(f"找到 {len(strm_files)} 个本地 .strm 文件")
+                    # 检查是否是带后缀的strm文件
+                    if strm_suffix in file:
+                        full_path = os.path.abspath(os.path.join(root, file))
+                        strm_files.append(full_path)
+        self.logger.info(f"找到 {len(strm_files)} 个本地带后缀 '{strm_suffix}' 的 .strm 文件")
         return strm_files
 
     def build_expected_strm_set(self, file_tree, current_path=''):
@@ -118,7 +123,10 @@ class StrmValidator:
                     relative_path = os.path.relpath(file_name, self.remote_base)
                     video_relative_dir = os.path.dirname(relative_path)
                     video_base_name = os.path.splitext(os.path.basename(relative_path))[0]
-                    strm_file_name = f"{video_base_name}.strm"
+                    
+                    # 获取配置中的strm后缀，默认为'-转码'
+                    strm_suffix = self.config.get('strm_suffix', '-转码')
+                    strm_file_name = f"{video_base_name}{strm_suffix}.strm"
                     strm_file_path = os.path.abspath(
                         os.path.join(self.target_directory, video_relative_dir, strm_file_name)
                     )
@@ -349,10 +357,78 @@ class StrmValidator:
 
         self.logger.info(f"验证完成。有效的 .strm 文件数量: {valid_count}，无效的 .strm 文件数量: {invalid_count}")
 
+    def generate_strm_files_for_local_videos(self):
+        """
+        为本地视频文件生成带后缀的strm文件
+        """
+        self.logger.info("开始为本地视频文件生成带后缀的strm文件...")
+        
+        # 获取配置中的strm后缀
+        strm_suffix = self.config.get('strm_suffix', '-转码')
+        video_formats = set(fmt.lower() for fmt in self.script_config.get('video_formats', []))
+        size_threshold_mb = self.script_config.get('size_threshold', 100)
+        size_threshold_bytes = size_threshold_mb * 1024 * 1024
+        
+        generated_count = 0
+        skipped_count = 0
+        
+        for root, dirs, files in os.walk(self.target_directory):
+            for file in files:
+                file_path = os.path.join(root, file)
+                file_extension = os.path.splitext(file)[1].lower().lstrip('.')
+                
+                # 检查是否是视频文件
+                if file_extension in video_formats:
+                    # 检查文件大小
+                    try:
+                        file_size = os.path.getsize(file_path)
+                        if file_size < size_threshold_bytes:
+                            self.logger.debug(f"跳过文件（大小小于阈值）: {file}，大小: {file_size / (1024 * 1024):.2f}MB")
+                            skipped_count += 1
+                            continue
+                    except OSError as e:
+                        self.logger.warning(f"无法获取文件大小: {file}，错误: {e}")
+                        continue
+                    
+                    # 检查是否已存在对应的strm文件
+                    base_name = os.path.splitext(file)[0]
+                    strm_file_name = f"{base_name}{strm_suffix}.strm"
+                    strm_file_path = os.path.join(root, strm_file_name)
+                    
+                    if os.path.exists(strm_file_path):
+                        self.logger.debug(f"跳过生成strm文件（已存在）: {strm_file_name}")
+                        skipped_count += 1
+                        continue
+                    
+                    # 生成strm文件内容
+                    try:
+                        # 构建相对路径
+                        relative_path = os.path.relpath(file_path, self.target_directory)
+                        # 构建远程路径
+                        remote_path = os.path.join(self.remote_base, relative_path).replace('\\', '/')
+                        # 构建HTTP链接
+                        http_link = f"{self.config['protocol']}://{self.config['host']}:{self.config['port']}/d{remote_path}"
+                        
+                        # 写入strm文件
+                        with open(strm_file_path, 'w', encoding='utf-8') as strm_file:
+                            strm_file.write(http_link)
+                        
+                        # 设置文件权限
+                        os.chmod(strm_file_path, 0o777)
+                        
+                        self.logger.info(f"已生成strm文件: {strm_file_name}")
+                        generated_count += 1
+                        
+                    except Exception as e:
+                        self.logger.error(f"生成strm文件时出错: {file}，错误: {e}")
+        
+        self.logger.info(f"strm文件生成完成。生成: {generated_count} 个，跳过: {skipped_count} 个")
+
 def main():
     if len(sys.argv) < 3 or len(sys.argv) > 4:
         print("用法: python strm_validator.py <config_id> <scan_mode> [task_id]")
         print("示例: python strm_validator.py 1 quick [task_id]")
+        print("示例: python strm_validator.py 1 generate [task_id]")
         sys.exit(1)
 
     try:
@@ -364,8 +440,8 @@ def main():
     scan_mode = sys.argv[2].lower()
     task_id = sys.argv[3] if len(sys.argv) == 4 else None  # 获取 task_id，如果存在
 
-    if scan_mode not in ['quick', 'slow']:
-        print("扫描模式无效，请选择 'quick' 或 'slow'.")
+    if scan_mode not in ['quick', 'slow', 'generate']:
+        print("扫描模式无效，请选择 'quick'、'slow' 或 'generate'.")
         sys.exit(1)
 
     # 创建数据库处理实例
@@ -375,7 +451,11 @@ def main():
         # 创建 StrmValidator 实例并执行校验
         validator = StrmValidator(db_handler, scan_mode, config_id, task_id=task_id)
         validator.set_target_directory(config_id)
-        validator.validate_all_strm_files()
+        
+        if scan_mode == 'generate':
+            validator.generate_strm_files_for_local_videos()
+        else:
+            validator.validate_all_strm_files()
     except Exception as e:
         print(f"运行过程中出现未捕获的异常: {e}")
     finally:

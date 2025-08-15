@@ -26,7 +26,8 @@ class DBHandler:
                                 rootpath TEXT,
                                 target_directory TEXT,
                                 download_enabled INTEGER DEFAULT 1,
-                                download_interval_range TEXT
+                                download_interval_range TEXT,
+                                strm_suffix TEXT DEFAULT '-转码'
                                 )''')
 
         # 初始化 user_config 表，用于存储脚本的全局配置
@@ -48,6 +49,7 @@ class DBHandler:
         self.add_column_if_not_exists('config', 'target_directory', 'TEXT')
         self.add_column_if_not_exists('config', 'update_mode', 'TEXT')
         self.add_column_if_not_exists('config', 'download_interval_range', 'TEXT', default_value='1-3')
+        self.add_column_if_not_exists('config', 'strm_suffix', 'TEXT', default_value='-转码')
         self.add_column_if_not_exists('user_config', 'size_threshold', 'INTEGER', default_value=100)
         self.add_column_if_not_exists('user_config', 'username', 'TEXT')
         self.add_column_if_not_exists('user_config', 'password', 'TEXT')
@@ -141,7 +143,7 @@ class DBHandler:
 
     def get_webdav_config(self, config_id):
         self.cursor.execute('''
-            SELECT config_name, url, username, password, rootpath, target_directory, download_enabled, update_mode,  download_interval_range
+            SELECT config_name, url, username, password, rootpath, target_directory, download_enabled, update_mode,  download_interval_range, strm_suffix
             FROM config
             WHERE config_id=? LIMIT 1
         ''', (config_id,))
@@ -149,7 +151,7 @@ class DBHandler:
         result = self.cursor.fetchone()
 
         if result:
-            config_name, url, username, password, rootpath, target_directory, download_enabled, update_mode, download_interval_range = result
+            config_name, url, username, password, rootpath, target_directory, download_enabled, update_mode, download_interval_range, strm_suffix = result
             parsed_url = urlparse(url)
 
             protocol = parsed_url.scheme
@@ -178,7 +180,8 @@ class DBHandler:
                 'target_directory': target_directory,
                 'download_enabled': download_enabled,
                 'update_mode': update_mode,
-                'download_interval_range': (min_interval, max_interval)  # 返回最小和最大间隔
+                'download_interval_range': (min_interval, max_interval),  # 返回最小和最大间隔
+                'strm_suffix': strm_suffix or '-转码'  # 默认后缀
             }
         else:
             return None

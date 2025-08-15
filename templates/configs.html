@@ -30,6 +30,9 @@
                         <a href="{{ url_for('copy_config', config_id=config[0]) }}" class="btn btn-sm btn-secondary">复制</a>
                         <a href="{{ url_for('logs', config_id=config[0]) }}" class="btn btn-sm btn-info">查看日志</a>
                         <a href="{{ url_for('edit_config', config_id=config[0]) }}" class="btn btn-sm btn-warning">编辑</a>
+                        <form method="POST" action="{{ url_for('generate_strm_files', config_id=config[0]) }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('确认为此配置生成STRM文件吗？')">生成STRM</button>
+                        </form>
                         <a href="{{ url_for('delete_config', config_id=config[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除此配置吗？')">删除</a>
                     </div>
                 </div>

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  alist-strm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: alist-strm
+    restart: unless-stopped
+    ports:
+      - "15000:5000"
+    environment:
+      - TZ=Asia/Shanghai
+      - HOST_OS=Unraid
+      - HOST_HOSTNAME=Tower
+      - HOST_CONTAINERNAME=alist-strm
+      - CONFIG_PATH=/config
+      - Community_Applications_Conversion=true
+      - TIMEZONE=Asia/Shanghai
+    volumes:
+      - /mnt/user/appdata/alist-strm/config:/config:rw
+      - /mnt/user/Vedio:/media:rw,shared
+      - /mnt/user/clouds/strm:/strm:rw,shared
+    labels:
+      - "net.unraid.docker.managed=dockerman"
+      - "net.unraid.docker.webui=http://[IP]:[PORT:5000]"
+    # Unraid特定的CPU限制
+    cpuset: "4,6,5,7"
+    pids_limit: 2048

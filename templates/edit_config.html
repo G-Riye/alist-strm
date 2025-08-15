@@ -55,6 +55,11 @@
                 <option value="full" {% if config[7] == 'full' %}selected{% endif %}>全量更新</option>
             </select>
         </div>
+        <div class="mb-3">
+            <label for="strm_suffix" class="form-label">STRM文件后缀</label>
+            <input type="text" class="form-control" name="strm_suffix" value="{{ config[9] if config|length > 9 else '-转码' }}" placeholder="例如：-转码">
+            <small class="form-text text-muted">生成的STRM文件名将使用此后缀，例如：movie-转码.strm</small>
+        </div>
         <button type="submit" class="btn btn-primary">保存修改</button>
     </form>
 </div>
