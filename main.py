@@ -365,7 +365,7 @@ def process_with_cache(webdav, config, script_config, config_id, size_threshold,
         logger.error("缺少协议、主机或端口，无法构建 API URL。")
 
     # 加载本地目录树（增量更新和全量更新都需要使用）
-            local_tree = build_local_directory_tree(config['target_directory'], script_config, logger, config)
+    local_tree = build_local_directory_tree(config['target_directory'], script_config, logger, config)
 
     if config.get('update_mode') == 'incremental':
         logger.info("正在执行增量更新...")
@@ -459,7 +459,9 @@ if __name__ == '__main__':
 
         # 使用缓存策略处理文件，并传递 size_threshold
         try:
-            process_with_cache(webdav, config, script_config, config_id, script_config['size_threshold'], logger)
+            # 获取下载间隔范围
+            min_interval, max_interval = config['download_interval_range']
+            process_with_cache(webdav, config, script_config, config_id, script_config['size_threshold'], logger, min_interval, max_interval)
         except Exception as e:
             logger.error(f"处理文件时发生错误: {e}")
             sys.exit(1)

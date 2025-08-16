@@ -28,10 +28,15 @@ jobs:
       with:
         images: riye/alist-strm
         tags: |
-          type=ref,event=branch
-          type=ref,event=pr
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+        labels: |
+          org.opencontainers.image.title=Alist STRM Generator
+          org.opencontainers.image.description=Alist STRM file generator with custom suffix support, supporting incremental updates and batch processing
+          org.opencontainers.image.vendor=riye
+          org.opencontainers.image.source=https://github.com/riye/alist-strm
+          org.opencontainers.image.licenses=MIT
           
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
