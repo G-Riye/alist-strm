@@ -1309,7 +1309,9 @@ if __name__ == '__main__':
     sync_cron_with_backup()
     ensure_env_file()
     port = load_port_from_env()
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # 本地开发时关闭debug模式，避免文件锁定问题
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host="0.0.0.0", port=port, debug=debug_mode, use_reloader=False)
 
 
 

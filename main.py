@@ -372,7 +372,7 @@ def process_with_cache(webdav, config, script_config, config_id, size_threshold,
 
         if cached_tree:
             current_tree = list_files_recursive_with_cache(
-                webdav, root_directory, config, script_config, size_threshold, download_enabled, logger, local_tree,  min_interval, max_interval, visited=None
+                webdav, root_directory, config, script_config, size_threshold, download_enabled, logger, local_tree, min_interval, max_interval, visited=None
             )
             if compare_directory_trees(cached_tree, current_tree):
                 logger.info("本地目录树与云端一致，跳过更新。")
@@ -385,7 +385,7 @@ def process_with_cache(webdav, config, script_config, config_id, size_threshold,
         else:
             logger.info("没有找到缓存的目录树，执行全量更新。")
             current_tree = list_files_recursive_with_cache(
-                webdav, root_directory, config, script_config, size_threshold, download_enabled, logger,  min_interval, max_interval, local_tree, visited=None
+                webdav, root_directory, config, script_config, size_threshold, download_enabled, logger, local_tree, min_interval, max_interval, visited=None
             )
             save_tree_to_cache(current_tree, config_id, logger)
 
@@ -394,7 +394,7 @@ def process_with_cache(webdav, config, script_config, config_id, size_threshold,
 
         # 在全量更新时，同样需要检查本地文件，快速跳过已经存在的文件
         current_tree = list_files_recursive_with_cache(
-            webdav, root_directory, config, script_config, size_threshold, download_enabled, logger, min_interval, max_interval, local_tree, visited=None
+            webdav, root_directory, config, script_config, size_threshold, download_enabled, logger, local_tree, min_interval, max_interval, visited=None
         )
         save_tree_to_cache(current_tree, config_id, logger)  # 保存全量更新后的目录树到缓存
 

@@ -18,7 +18,11 @@ def setup_logger(log_name, task_id=None):
     if os.path.exists(base_log_file):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         new_log_file = base_log_file.replace('.log', f'_{timestamp}.log')
-        os.rename(base_log_file, new_log_file)
+        try:
+            os.rename(base_log_file, new_log_file)
+        except (OSError, PermissionError):
+            # 如果文件被占用，跳过重命名
+            pass
 
     # 新日志文件路径
     log_file = base_log_file

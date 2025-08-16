@@ -6,8 +6,24 @@ from urllib.parse import urlparse
 
 class DBHandler:
     def __init__(self, db_file=None):
-        # 如果 db_file 为空，则从环境变量中读取或使用默认值 '/config/config.db'
-        self.db_file = db_file or os.getenv('DB_FILE', '/config/config.db')
+        # 如果 db_file 为空，则从环境变量中读取或使用默认值
+        if db_file is None:
+            # 检查环境变量
+            db_file = os.getenv('DB_FILE')
+            if db_file is None:
+                # Docker环境使用/config/config.db，Windows环境使用当前目录下的config.db
+                if os.path.exists('/config/config.db'):
+                    db_file = '/config/config.db'
+                else:
+                    db_file = 'config.db'
+        
+        self.db_file = db_file
+        
+        # 确保数据库目录存在
+        db_dir = os.path.dirname(self.db_file)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+        
         # 使用 check_same_thread=False 允许跨线程访问
         self.conn = sqlite3.connect(self.db_file, check_same_thread=False)
         self.cursor = self.conn.cursor()
