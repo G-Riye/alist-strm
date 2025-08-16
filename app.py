@@ -140,7 +140,11 @@ def view_invalid_directory(directory_name):
         # 将目录树返回给前端
         return jsonify({"structure": json.dumps(directory_structure, ensure_ascii=False, indent=4)})
     except Exception as e:
-        logger.error(f"查看目录树时出错: {e}")
+        try:
+            temp_logger, _ = setup_logger('view_directory_tree')
+            temp_logger.error(f"查看目录树时出错: {e}")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
         return jsonify({"error": "查看目录树时出错"}), 500
 
 def get_target_directory_by_config_id(config_id):
@@ -190,25 +194,41 @@ def delete_invalid_directory(json_filename):
                     # 删除空目录
                     if os.path.exists(current_path) and not os.listdir(current_path):
                         os.rmdir(current_path)
-                        logger.info(f"删除空目录: {current_path}")
+                        try:
+                            temp_logger, _ = setup_logger('delete_directory')
+                            temp_logger.info(f"删除空目录: {current_path}")
+                        except Exception as log_e:
+                            print(f"记录日志时出错: {log_e}")
                 elif content == "invalid" and name.endswith('.strm'):
                     # 删除文件
                     if os.path.exists(current_path):
                         os.remove(current_path)
-                        logger.info(f"删除文件: {current_path}")
+                        try:
+                            temp_logger, _ = setup_logger('delete_directory')
+                            temp_logger.info(f"删除文件: {current_path}")
+                        except Exception as log_e:
+                            print(f"记录日志时出错: {log_e}")
 
         # 开始删除
         delete_strm_files(target_directory, directory_tree)
 
         # 删除对应的失效目录树 JSON 文件
         os.remove(json_file_path)
-        logger.info(f"删除失效目录树 JSON 文件: {json_file_path}")
+        try:
+            temp_logger, _ = setup_logger('delete_directory')
+            temp_logger.info(f"删除失效目录树 JSON 文件: {json_file_path}")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
 
         flash('目录及其 .strm 文件已成功删除！', 'success')
         return jsonify({"message": "目录和失效目录树已成功删除"}), 200
 
     except Exception as e:
-        logger.error(f"删除目录时出错: {e}")
+        try:
+            temp_logger, _ = setup_logger('delete_directory')
+            temp_logger.error(f"删除目录时出错: {e}")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
         return jsonify({"error": "删除目录时出错"}), 500
 
 @app.route('/invalid_file_trees')
@@ -241,7 +261,11 @@ def get_invalid_file_tree(json_filename):
         return jsonify({"structure": directory_tree}), 200
 
     except Exception as e:
-        logger.error(f"获取目录树时出错: {e}")
+        try:
+            temp_logger, _ = setup_logger('get_invalid_file_tree')
+            temp_logger.error(f"获取目录树时出错: {e}")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
         return jsonify({"error": "获取目录树时出错"}), 500
 
 
@@ -483,8 +507,17 @@ def settings():
 def logs(config_id):
     log_dir = os.path.join(os.getcwd(), 'logs')
 
+    # 检查日志目录是否存在
+    if not os.path.exists(log_dir):
+        # 如果目录不存在，返回404错误
+        abort(404, description=f"日志目录不存在")
+
     # 获取指定 config_id 的所有日志文件（以 config_id 为前缀）
-    log_files = [f for f in os.listdir(log_dir) if f.startswith(f'config_{config_id}') and f.endswith('.log')]
+    try:
+        log_files = [f for f in os.listdir(log_dir) if f.startswith(f'config_{config_id}') and f.endswith('.log')]
+    except Exception as e:
+        # 如果读取目录失败，返回500错误
+        abort(500, description=f"读取日志目录失败: {str(e)}")
 
     if not log_files:
         # 如果没有找到相关日志文件，返回 404 错误
@@ -540,10 +573,19 @@ def run_config(config_id):
 
     if os.path.exists(main_script_path):
         command = f"python3.9 {main_script_path} {config_id}"
-        logger.info(f"启动配置ID: {config_id} 的命令: {command}")
+        try:
+            # 创建临时logger用于记录
+            temp_logger, _ = setup_logger('run_config')
+            temp_logger.info(f"启动配置ID: {config_id} 的命令: {command}")
+        except Exception as e:
+            print(f"记录日志时出错: {e}")
         subprocess.Popen(command, shell=True)
     else:
-        logger.error(f"无法找到 main.py 文件: {main_script_path}")
+        try:
+            temp_logger, _ = setup_logger('run_config')
+            temp_logger.error(f"无法找到 main.py 文件: {main_script_path}")
+        except Exception as e:
+            print(f"记录日志时出错: {e}")
 
 @app.route('/run_selected_configs', methods=['POST'])
 def run_selected_configs():
@@ -587,7 +629,12 @@ def generate_strm_files(config_id):
         strm_validator_path = os.path.join(os.getcwd(), 'strm_validator.py')
         if os.path.exists(strm_validator_path):
             command = f"python3.9 {strm_validator_path} {config_id} generate"
-            logger.info(f"启动配置ID: {config_id} 的strm文件生成命令: {command}")
+            try:
+                # 创建临时logger用于记录
+                temp_logger, _ = setup_logger('generate_strm')
+                temp_logger.info(f"启动配置ID: {config_id} 的strm文件生成命令: {command}")
+            except Exception as e:
+                print(f"记录日志时出错: {e}")
             subprocess.Popen(command, shell=True)
             flash(f'配置 {config["config_name"]} 的strm文件生成已开始！', 'success')
         else:
@@ -742,9 +789,19 @@ def delete_selected_tasks():
 def view_logs(task_id):
     # 日志文件的路径
     log_dir = os.path.join(os.getcwd(), 'logs')
+    
+    # 检查日志目录是否存在
+    if not os.path.exists(log_dir):
+        # 如果目录不存在，返回404错误
+        abort(404, description=f"日志目录不存在")
+    
     # 构建日志文件的搜索模式
     log_pattern = os.path.join(log_dir, f'task_{task_id}_*.log')
-    log_files = glob.glob(log_pattern)
+    try:
+        log_files = glob.glob(log_pattern)
+    except Exception as e:
+        # 如果搜索日志文件失败，返回500错误
+        abort(500, description=f"搜索日志文件失败: {str(e)}")
 
     if log_files:
         # 按照文件修改时间排序，最新的文件排在第一个
@@ -1126,7 +1183,11 @@ def ensure_env_file():
     config_dir = '/config'
     if not os.path.exists(config_dir):
         os.makedirs(config_dir)
-        logger.info(f"创建了目录: {config_dir}")
+        try:
+            temp_logger, _ = setup_logger('ensure_env_file')
+            temp_logger.info(f"创建了目录: {config_dir}")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
 
     # 从环境变量获取端口和安全码
     port = os.getenv('WEB_PORT', default_port)  # 默认端口5000
@@ -1138,13 +1199,25 @@ def ensure_env_file():
 
     # 检查是否创建了 app.env 文件
     if not os.path.exists(env_file):
-        logger.info(f"正在创建 {env_file} 文件")
+        try:
+            temp_logger, _ = setup_logger('ensure_env_file')
+            temp_logger.info(f"正在创建 {env_file} 文件")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
         with open(env_file, 'w') as f:
             f.write(f"WEB_PORT={port}\n")
             f.write(f"SECURITY_CODE={security_code}\n")
-        logger.info(f"成功创建 {env_file} 文件")
+        try:
+            temp_logger, _ = setup_logger('ensure_env_file')
+            temp_logger.info(f"成功创建 {env_file} 文件")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
     else:
-        logger.info(f"{env_file} 文件已存在，检查内容")
+        try:
+            temp_logger, _ = setup_logger('ensure_env_file')
+            temp_logger.info(f"{env_file} 文件已存在，检查内容")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
 
         # 如果 app.env 存在，检查并写入默认值（如果缺少）
         lines = []
@@ -1167,15 +1240,27 @@ def ensure_env_file():
         # 如果没有端口和安全码，则补充默认值
         if not found_port:
             lines.append(f"WEB_PORT={port}\n")
-            logger.info(f"添加缺失的 WEB_PORT={port}")
+            try:
+                temp_logger, _ = setup_logger('ensure_env_file')
+                temp_logger.info(f"添加缺失的 WEB_PORT={port}")
+            except Exception as log_e:
+                print(f"记录日志时出错: {log_e}")
         if not found_security_code:
             lines.append(f"SECURITY_CODE={security_code}\n")
-            logger.info(f"添加缺失的 SECURITY_CODE={security_code}")
+            try:
+                temp_logger, _ = setup_logger('ensure_env_file')
+                temp_logger.info(f"添加缺失的 SECURITY_CODE={security_code}")
+            except Exception as log_e:
+                print(f"记录日志时出错: {log_e}")
 
         # 将更新的内容写回到 app.env 文件
         with open(env_file, 'w') as f:
             f.writelines(lines)
-        logger.info(f"{env_file} 文件内容已更新")
+        try:
+            temp_logger, _ = setup_logger('ensure_env_file')
+            temp_logger.info(f"{env_file} 文件内容已更新")
+        except Exception as log_e:
+            print(f"记录日志时出错: {log_e}")
 
 
 
