@@ -25,7 +25,7 @@ IMAGE_FOLDER = 'static/images'
 
 db_handler = DBHandler()
 
-local_version = "6.0.6"
+local_version = "6.1.1"
 
 
 
@@ -581,20 +581,17 @@ def run_config(config_id):
         except Exception as e:
             print(f"记录日志时出错: {e}")
         
-        # 使用subprocess.run而不是Popen，并设置工作目录
+        # 使用subprocess.Popen后台运行，不等待完成
         try:
-            result = subprocess.run(
+            process = subprocess.Popen(
                 command, 
                 shell=True, 
                 cwd=current_dir,
-                capture_output=True,
-                text=True,
-                timeout=30  # 设置超时时间
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
             )
-            if result.returncode != 0:
-                print(f"运行脚本失败: {result.stderr}")
-        except subprocess.TimeoutExpired:
-            print("运行脚本超时")
+            print(f"脚本已启动，进程ID: {process.pid}")
         except Exception as e:
             print(f"运行脚本时出错: {e}")
     else:
@@ -653,20 +650,17 @@ def generate_strm_files(config_id):
             except Exception as e:
                 print(f"记录日志时出错: {e}")
             
-            # 使用subprocess.run而不是Popen，并设置工作目录
+            # 使用subprocess.Popen后台运行，不等待完成
             try:
-                result = subprocess.run(
+                process = subprocess.Popen(
                     command, 
                     shell=True, 
                     cwd=os.getcwd(),
-                    capture_output=True,
-                    text=True,
-                    timeout=30  # 设置超时时间
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
                 )
-                if result.returncode != 0:
-                    print(f"运行strm生成脚本失败: {result.stderr}")
-            except subprocess.TimeoutExpired:
-                print("运行strm生成脚本超时")
+                print(f"strm生成脚本已启动，进程ID: {process.pid}")
             except Exception as e:
                 print(f"运行strm生成脚本时出错: {e}")
             flash(f'配置 {config["config_name"]} 的strm文件生成已开始！', 'success')

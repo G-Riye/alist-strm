@@ -1,9 +1,9 @@
 {
     "stable": {
-        "version": "6.0.7",
-        "release_date": "2025-01-15",
-        "download_url": "https://your-server.com/downloads/stable-v6.0.7.zip",
-        "changelog": "新增STRM文件后缀功能，支持自定义STRM文件后缀，添加手动生成STRM文件功能。"
+        "version": "6.1.1",
+        "release_date": "2025-01-16",
+        "download_url": "https://your-server.com/downloads/stable-v6.1.1.zip",
+        "changelog": "修复运行脚本问题，优化Docker发布配置，改进日志和STRM文件生成功能。"
     },
     "beta": {
         "version": "6.1.0-beta",
