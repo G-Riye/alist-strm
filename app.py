@@ -572,14 +572,31 @@ def run_config(config_id):
     main_script_path = os.path.join(current_dir, 'main.py')
 
     if os.path.exists(main_script_path):
-        command = f"python3.9 {main_script_path} {config_id}"
+        # 使用python而不是python3.9，因为Docker环境中可能没有python3.9
+        command = f"python {main_script_path} {config_id}"
         try:
             # 创建临时logger用于记录
             temp_logger, _ = setup_logger('run_config')
             temp_logger.info(f"启动配置ID: {config_id} 的命令: {command}")
         except Exception as e:
             print(f"记录日志时出错: {e}")
-        subprocess.Popen(command, shell=True)
+        
+        # 使用subprocess.run而不是Popen，并设置工作目录
+        try:
+            result = subprocess.run(
+                command, 
+                shell=True, 
+                cwd=current_dir,
+                capture_output=True,
+                text=True,
+                timeout=30  # 设置超时时间
+            )
+            if result.returncode != 0:
+                print(f"运行脚本失败: {result.stderr}")
+        except subprocess.TimeoutExpired:
+            print("运行脚本超时")
+        except Exception as e:
+            print(f"运行脚本时出错: {e}")
     else:
         try:
             temp_logger, _ = setup_logger('run_config')
@@ -628,14 +645,30 @@ def generate_strm_files(config_id):
         # 启动strm文件生成进程
         strm_validator_path = os.path.join(os.getcwd(), 'strm_validator.py')
         if os.path.exists(strm_validator_path):
-            command = f"python3.9 {strm_validator_path} {config_id} generate"
+            command = f"python {strm_validator_path} {config_id} generate"
             try:
                 # 创建临时logger用于记录
                 temp_logger, _ = setup_logger('generate_strm')
                 temp_logger.info(f"启动配置ID: {config_id} 的strm文件生成命令: {command}")
             except Exception as e:
                 print(f"记录日志时出错: {e}")
-            subprocess.Popen(command, shell=True)
+            
+            # 使用subprocess.run而不是Popen，并设置工作目录
+            try:
+                result = subprocess.run(
+                    command, 
+                    shell=True, 
+                    cwd=os.getcwd(),
+                    capture_output=True,
+                    text=True,
+                    timeout=30  # 设置超时时间
+                )
+                if result.returncode != 0:
+                    print(f"运行strm生成脚本失败: {result.stderr}")
+            except subprocess.TimeoutExpired:
+                print("运行strm生成脚本超时")
+            except Exception as e:
+                print(f"运行strm生成脚本时出错: {e}")
             flash(f'配置 {config["config_name"]} 的strm文件生成已开始！', 'success')
         else:
             flash('无法找到 strm_validator.py 文件', 'error')
