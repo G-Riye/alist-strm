@@ -25,7 +25,7 @@ IMAGE_FOLDER = 'static/images'
 
 db_handler = DBHandler()
 
-local_version = "6.1.1"
+local_version = "6.1.2"
 
 
 

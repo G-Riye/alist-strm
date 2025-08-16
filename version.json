@@ -1,9 +1,9 @@
 {
     "stable": {
-        "version": "6.1.1",
-        "release_date": "2025-01-16",
+            "version": "6.1.2",
+    "release_date": "2025-01-16",
         "download_url": "https://your-server.com/downloads/stable-v6.1.1.zip",
-        "changelog": "修复运行脚本问题，优化Docker发布配置，改进日志和STRM文件生成功能。"
+        "changelog": "修复main.py参数顺序错误，调整代码适配Windows环境，清理无用文件，优化Docker发布配置。"
     },
     "beta": {
         "version": "6.1.0-beta",
