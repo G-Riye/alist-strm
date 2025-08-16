@@ -96,7 +96,7 @@ docker-compose -f docker-compose.unraid.yml up -d
 ```bash
 docker run -d --name alist-strm -p 15000:5000 \
   -v /mnt/user/appdata/alist-strm/config:/config:rw \
-  -v /mnt/user/Vedio:/media:rw,shared \
+  -v /mnt/user/media:/media:rw,shared \
   -v /mnt/user/clouds/strm:/strm:rw,shared \
   g-riye/alist-strm:latest
 ```
@@ -116,7 +116,7 @@ services:
       - CONFIG_PATH=/config
     volumes:
       - /mnt/user/appdata/alist-strm/config:/config:rw
-      - /mnt/user/Vedio:/media:rw,shared
+      - /mnt/user/media:/media:rw,shared
       - /mnt/user/clouds/strm:/strm:rw,shared
 ```
 

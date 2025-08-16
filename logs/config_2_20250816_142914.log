@@ -1,7 +1,0 @@
-2025-08-16 13:39:48,533 - [config_2] - INFO - 正在使用配置ID: 2 运行，目标地址: https://openlist.469510353.xyz:8443
-2025-08-16 13:39:48,534 - [config_2] - INFO - 正在尝试刷新 WebDAV 根目录: /dav/unraid/Vedio/电影美剧
-2025-08-16 13:39:52,277 - [config_2] - INFO - WebDAV 目录 '/dav/unraid/Vedio/电影美剧' 刷新成功。
-2025-08-16 13:39:52,278 - [config_2] - INFO - 本地目录树已加载，包括 .strm 文件和需要下载的文件。
-2025-08-16 13:39:52,278 - [config_2] - INFO - 正在执行增量更新...
-2025-08-16 13:39:52,279 - [config_2] - INFO - 没有找到缓存的目录树，执行全量更新。
-2025-08-16 13:39:52,279 - [config_2] - ERROR - 处理文件时发生错误: unsupported operand type(s) for +: 'dict' and 'int'

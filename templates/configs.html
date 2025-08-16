@@ -1,5 +1,31 @@
 {% extends 'index.html' %}
 {% block content %}
+<style>
+    .config-item {
+        margin-bottom: 15px;
+    }
+    .config-info {
+        flex: 1;
+        margin-right: 15px;
+    }
+    .config-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        align-items: center;
+    }
+    .config-actions .btn {
+        font-size: 12px;
+        padding: 4px 8px;
+        white-space: nowrap;
+    }
+    .list-group-item {
+        padding: 15px;
+    }
+    .d-flex {
+        align-items: flex-start !important;
+    }
+</style>
 <div class="container">
     <h1 class="mt-4">配置文件列表</h1>
     <a href="{{ url_for('new_config') }}" class="btn btn-primary my-3">添加新配置</a>
@@ -15,9 +41,9 @@
 
             {% for config in configs %}
             <li class="list-group-item">
-                <div class="d-flex justify-content-between align-items-center">
-                    <!-- 配置项复选框 -->
-                    <div>
+                <div class="d-flex justify-content-between">
+                    <!-- 配置项复选框和信息 -->
+                    <div class="config-info">
                         <input type="checkbox" name="selected_configs" value="{{ config[0] }}">
                         <strong>名称:</strong> {{ config[1] }}<br>
                         <strong>URL:</strong> {{ config[2] }}<br>
@@ -25,15 +51,13 @@
                         <strong>路径:</strong> {{ config[4] }}<br>
                         <strong>目标目录:</strong> {{ config[5] }}
                     </div>
-                    <div>
+                    <div class="config-actions">
                         <!-- 操作按钮 -->
-                        <a href="{{ url_for('copy_config', config_id=config[0]) }}" class="btn btn-sm btn-secondary">复制</a>
-                        <a href="{{ url_for('logs', config_id=config[0]) }}" class="btn btn-sm btn-info">查看日志</a>
-                        <a href="{{ url_for('edit_config', config_id=config[0]) }}" class="btn btn-sm btn-warning">编辑</a>
-                        <form method="POST" action="{{ url_for('generate_strm_files', config_id=config[0]) }}" style="display: inline;">
-                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('确认为此配置生成STRM文件吗？')">生成STRM</button>
-                        </form>
-                        <a href="{{ url_for('delete_config', config_id=config[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('确认删除此配置吗？')">删除</a>
+                        <a href="{{ url_for('copy_config', config_id=config[0]) }}" class="btn btn-secondary">复制</a>
+                        <a href="{{ url_for('logs', config_id=config[0]) }}" class="btn btn-info">查看日志</a>
+                        <a href="{{ url_for('edit_config', config_id=config[0]) }}" class="btn btn-warning">编辑</a>
+                        <button type="button" class="btn btn-success" onclick="generateStrm({{ config[0] }})">生成STRM</button>
+                        <a href="{{ url_for('delete_config', config_id=config[0]) }}" class="btn btn-danger" onclick="return confirm('确认删除此配置吗？')">删除</a>
                     </div>
                 </div>
             </li>
@@ -69,6 +93,31 @@
     function submitForm(action) {
         document.getElementById('action').value = action;
         document.getElementById('config-form').submit();
+    }
+
+    // 生成STRM文件的函数
+    function generateStrm(configId) {
+        if (confirm('确认为此配置生成STRM文件吗？')) {
+            // 使用fetch API发送POST请求
+            fetch('/generate_strm_files/' + configId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    // 刷新页面以显示结果
+                    window.location.reload();
+                } else {
+                    alert('生成STRM文件时出错');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('生成STRM文件时出错');
+            });
+        }
     }
 </script>
 

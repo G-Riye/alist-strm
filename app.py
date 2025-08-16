@@ -578,8 +578,9 @@ def run_config(config_id):
             # 创建临时logger用于记录
             temp_logger, _ = setup_logger('run_config')
             temp_logger.info(f"启动配置ID: {config_id} 的命令: {command}")
+            print(f"✅ 启动配置ID: {config_id} 的命令: {command}")
         except Exception as e:
-            print(f"记录日志时出错: {e}")
+            print(f"❌ 记录日志时出错: {e}")
         
         # 使用subprocess.Popen后台运行，不等待完成
         try:
@@ -591,15 +592,31 @@ def run_config(config_id):
                 stderr=subprocess.PIPE,
                 text=True
             )
-            print(f"脚本已启动，进程ID: {process.pid}")
+            print(f"✅ 脚本已启动，进程ID: {process.pid}")
+            
+            # 记录进程启动信息
+            try:
+                temp_logger, _ = setup_logger('run_config')
+                temp_logger.info(f"脚本已启动，进程ID: {process.pid}")
+            except Exception as e:
+                print(f"❌ 记录进程信息时出错: {e}")
+                
         except Exception as e:
-            print(f"运行脚本时出错: {e}")
+            error_msg = f"运行脚本时出错: {e}"
+            print(f"❌ {error_msg}")
+            try:
+                temp_logger, _ = setup_logger('run_config')
+                temp_logger.error(error_msg)
+            except Exception as log_e:
+                print(f"❌ 记录错误日志时出错: {log_e}")
     else:
+        error_msg = f"无法找到 main.py 文件: {main_script_path}"
+        print(f"❌ {error_msg}")
         try:
             temp_logger, _ = setup_logger('run_config')
-            temp_logger.error(f"无法找到 main.py 文件: {main_script_path}")
+            temp_logger.error(error_msg)
         except Exception as e:
-            print(f"记录日志时出错: {e}")
+            print(f"❌ 记录错误日志时出错: {e}")
 
 @app.route('/run_selected_configs', methods=['POST'])
 def run_selected_configs():
@@ -647,8 +664,9 @@ def generate_strm_files(config_id):
                 # 创建临时logger用于记录
                 temp_logger, _ = setup_logger('generate_strm')
                 temp_logger.info(f"启动配置ID: {config_id} 的strm文件生成命令: {command}")
+                print(f"✅ 启动配置ID: {config_id} 的strm文件生成命令: {command}")
             except Exception as e:
-                print(f"记录日志时出错: {e}")
+                print(f"❌ 记录日志时出错: {e}")
             
             # 使用subprocess.Popen后台运行，不等待完成
             try:
@@ -660,9 +678,23 @@ def generate_strm_files(config_id):
                     stderr=subprocess.PIPE,
                     text=True
                 )
-                print(f"strm生成脚本已启动，进程ID: {process.pid}")
+                print(f"✅ strm生成脚本已启动，进程ID: {process.pid}")
+                
+                # 记录进程启动信息
+                try:
+                    temp_logger, _ = setup_logger('generate_strm')
+                    temp_logger.info(f"strm生成脚本已启动，进程ID: {process.pid}")
+                except Exception as e:
+                    print(f"❌ 记录进程信息时出错: {e}")
+                    
             except Exception as e:
-                print(f"运行strm生成脚本时出错: {e}")
+                error_msg = f"运行strm生成脚本时出错: {e}"
+                print(f"❌ {error_msg}")
+                try:
+                    temp_logger, _ = setup_logger('generate_strm')
+                    temp_logger.error(error_msg)
+                except Exception as log_e:
+                    print(f"❌ 记录错误日志时出错: {log_e}")
             flash(f'配置 {config["config_name"]} 的strm文件生成已开始！', 'success')
         else:
             flash('无法找到 strm_validator.py 文件', 'error')

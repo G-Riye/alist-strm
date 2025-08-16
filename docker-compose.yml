@@ -19,7 +19,7 @@ services:
       - TIMEZONE=Asia/Shanghai
     volumes:
       - ./config:/config:rw
-      - /mnt/user/Vedio:/media:rw,shared
+      - /mnt/user/media:/media:rw,shared
       - /mnt/user/clouds/strm:/strm:rw,shared
     labels:
       - "net.unraid.docker.managed=dockerman"
