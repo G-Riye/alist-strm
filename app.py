@@ -7,12 +7,16 @@ import json
 import subprocess
 import zipfile
 import requests
+import easywebdav
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session, g, abort, jsonify
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from db_handler import DBHandler
 from logger import setup_logger
 from task_scheduler import add_tasks_to_cron, update_tasks_in_cron, delete_tasks_from_cron, list_tasks_in_cron, convert_to_cron_time, run_task_immediately
+import psutil
+import json
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -1333,6 +1337,196 @@ def load_port_from_env():
     return 5000  # 如果未找到，则返回默认端口
 
 
+
+@app.route('/system_monitor')
+@login_required
+def system_monitor():
+    """系统资源监控页面"""
+    return render_template('system_monitor.html')
+
+@app.route('/api/system_info')
+@login_required
+def get_system_info():
+    """获取系统信息API"""
+    try:
+        # CPU信息
+        cpu_count = psutil.cpu_count()
+        cpu_percent = psutil.cpu_percent(interval=1)
+        
+        # 内存信息
+        memory = psutil.virtual_memory()
+        
+        # 磁盘信息
+        disk = psutil.disk_usage('/')
+        
+        # 网络信息
+        network = psutil.net_io_counters()
+        
+        # 进程信息
+        process = psutil.Process()
+        process_memory = process.memory_info()
+        process_cpu = process.cpu_percent()
+        
+        # Docker环境检查
+        is_docker = os.path.exists('/.dockerenv')
+        
+        # 文件权限检查
+        paths_status = {}
+        paths_to_check = ['/app', '/app/logs', '/app/cache', '/config', '/data']
+        for path in paths_to_check:
+            if os.path.exists(path):
+                try:
+                    stat = os.stat(path)
+                    paths_status[path] = {
+                        'exists': True,
+                        'permissions': oct(stat.st_mode)[-3:],
+                        'error': None
+                    }
+                except Exception as e:
+                    paths_status[path] = {
+                        'exists': True,
+                        'permissions': None,
+                        'error': str(e)
+                    }
+            else:
+                paths_status[path] = {
+                    'exists': False,
+                    'permissions': None,
+                    'error': None
+                }
+        
+        # 进程限制
+        try:
+            import resource
+            file_limits = resource.getrlimit(resource.RLIMIT_NOFILE)
+            process_limits = resource.getrlimit(resource.RLIMIT_NPROC)
+        except Exception as e:
+            file_limits = (None, None)
+            process_limits = (None, None)
+        
+        system_info = {
+            'timestamp': datetime.now().isoformat(),
+            'cpu': {
+                'count': cpu_count,
+                'percent': cpu_percent
+            },
+            'memory': {
+                'total_gb': round(memory.total / 1024 / 1024 / 1024, 1),
+                'used_gb': round(memory.used / 1024 / 1024 / 1024, 1),
+                'available_gb': round(memory.available / 1024 / 1024 / 1024, 1),
+                'percent': memory.percent
+            },
+            'disk': {
+                'total_gb': round(disk.total / 1024 / 1024 / 1024, 1),
+                'used_gb': round(disk.used / 1024 / 1024 / 1024, 1),
+                'free_gb': round(disk.free / 1024 / 1024 / 1024, 1),
+                'percent': disk.percent
+            },
+            'network': {
+                'bytes_sent_mb': round(network.bytes_sent / 1024 / 1024, 1),
+                'bytes_recv_mb': round(network.bytes_recv / 1024 / 1024, 1)
+            },
+            'process': {
+                'memory_mb': round(process_memory.rss / 1024 / 1024, 1),
+                'cpu_percent': process_cpu
+            },
+            'environment': {
+                'is_docker': is_docker,
+                'python_version': sys.version,
+                'working_directory': os.getcwd()
+            },
+            'paths': paths_status,
+            'limits': {
+                'file_descriptors': {
+                    'soft': file_limits[0],
+                    'hard': file_limits[1]
+                },
+                'processes': {
+                    'soft': process_limits[0],
+                    'hard': process_limits[1]
+                }
+            }
+        }
+        
+        return jsonify(system_info)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/webdav_test/<int:config_id>')
+@login_required
+def test_webdav_connection(config_id):
+    """测试WebDAV连接API"""
+    try:
+        db = DBHandler()
+        config = db.get_config(config_id)
+        
+        if not config:
+            return jsonify({'error': f'未找到配置ID: {config_id}'}), 404
+        
+        # 测试连接
+        try:
+            webdav = easywebdav.connect(
+                host=config['host'],
+                port=config['port'],
+                username=config['username'],
+                password=config['password'],
+                protocol=config['protocol'],
+                timeout=30
+            )
+            
+            # 测试列出根目录
+            files = webdav.ls('/')
+            
+            result = {
+                'success': True,
+                'config_name': config['config_name'],
+                'webdav_url': f"{config['protocol']}://{config['host']}:{config['port']}",
+                'monitor_path': config['monitor_path'],
+                'target_directory': config['target_directory'],
+                'root_files_count': len(files),
+                'message': 'WebDAV连接成功'
+            }
+            
+        except Exception as e:
+            result = {
+                'success': False,
+                'config_name': config['config_name'],
+                'webdav_url': f"{config['protocol']}://{config['host']}:{config['port']}",
+                'monitor_path': config['monitor_path'],
+                'target_directory': config['target_directory'],
+                'error': str(e),
+                'message': 'WebDAV连接失败'
+            }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/module_check')
+@login_required
+def check_modules():
+    """检查Python模块API"""
+    try:
+        modules = ['easywebdav', 'requests', 'psutil', 'sqlite3', 'Flask']
+        module_status = {}
+        
+        for module in modules:
+            try:
+                __import__(module)
+                module_status[module] = {
+                    'installed': True,
+                    'error': None
+                }
+            except ImportError as e:
+                module_status[module] = {
+                    'installed': False,
+                    'error': str(e)
+                }
+        
+        return jsonify(module_status)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     logger, log_file = setup_logger('app')

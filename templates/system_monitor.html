@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统资源监控 - Alist STRM Generator</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/select2.min.css') }}" rel="stylesheet">
+    <style>
+        .metric-card {
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+        .progress {
+            height: 25px;
+            border-radius: 12px;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-ok { background-color: #28a745; }
+        .status-warning { background-color: #ffc107; }
+        .status-error { background-color: #dc3545; }
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .chart-container {
+            height: 300px;
+            margin: 20px 0;
+        }
+        .config-select {
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" height="30" class="d-inline-block align-text-top me-2">
+                Alist STRM Generator
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('home') }}">首页</a>
+                <a class="nav-link" href="{{ url_for('configs') }}">配置管理</a>
+                <a class="nav-link active" href="{{ url_for('system_monitor') }}">系统监控</a>
+                <a class="nav-link" href="{{ url_for('logout') }}">退出</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-tachometer-alt"></i> 系统资源监控</h2>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" onclick="refreshData()">
+                            <i class="fas fa-sync-alt"></i> 刷新数据
+                        </button>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoRefresh">
+                            <label class="form-check-label" for="autoRefresh">自动刷新</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统概览 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card metric-card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">CPU使用率</h5>
+                        <h2 id="cpuPercent">--</h2>
+                        <small id="cpuInfo">-- 核心</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">内存使用率</h5>
+                        <h2 id="memoryPercent">--</h2>
+                        <small id="memoryInfo">-- GB</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">磁盘使用率</h5>
+                        <h2 id="diskPercent">--</h2>
+                        <small id="diskInfo">-- GB</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">进程内存</h5>
+                        <h2 id="processMemory">--</h2>
+                        <small>MB</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 详细资源信息 -->
+        <div class="row">
+            <!-- CPU和内存详细信息 -->
+            <div class="col-md-6">
+                <div class="card metric-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-microchip"></i> CPU & 内存详情</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">CPU使用率</label>
+                            <div class="progress">
+                                <div id="cpuProgress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">内存使用率</label>
+                            <div class="progress">
+                                <div id="memoryProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted">总内存</small>
+                                <div id="totalMemory">--</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">可用内存</small>
+                                <div id="availableMemory">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 磁盘和网络信息 -->
+            <div class="col-md-6">
+                <div class="card metric-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-hdd"></i> 磁盘 & 网络</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">磁盘使用率</label>
+                            <div class="progress">
+                                <div id="diskProgress" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <small class="text-muted">总空间</small>
+                                <div id="totalDisk">--</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">可用空间</small>
+                                <div id="freeDisk">--</div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted">网络发送</small>
+                                <div id="networkSent">--</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">网络接收</small>
+                                <div id="networkRecv">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 环境信息 -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card metric-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-info-circle"></i> 环境信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <td><strong>运行环境</strong></td>
+                                    <td id="environment">--</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Python版本</strong></td>
+                                    <td id="pythonVersion">--</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>工作目录</strong></td>
+                                    <td id="workingDirectory">--</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>最后更新</strong></td>
+                                    <td id="lastUpdate">--</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文件权限检查 -->
+            <div class="col-md-6">
+                <div class="card metric-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-folder"></i> 文件权限检查</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="pathsStatus">
+                            <!-- 动态加载路径状态 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模块检查 -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card metric-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-cube"></i> Python模块检查</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="modulesStatus">
+                            <!-- 动态加载模块状态 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WebDAV连接测试 -->
+            <div class="col-md-6">
+                <div class="card metric-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-cloud"></i> WebDAV连接测试</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <select id="configSelect" class="form-select config-select">
+                                <option value="">选择配置...</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="testWebDAV()">
+                            <i class="fas fa-plug"></i> 测试连接
+                        </button>
+                        <div id="webdavResult" class="mt-3">
+                            <!-- 测试结果显示 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 进程限制信息 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card metric-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-cogs"></i> 进程限制</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>文件描述符限制</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>软限制</td>
+                                            <td id="fileLimitSoft">--</td>
+                                        </tr>
+                                        <tr>
+                                            <td>硬限制</td>
+                                            <td id="fileLimitHard">--</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>进程数限制</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>软限制</td>
+                                            <td id="processLimitSoft">--</td>
+                                        </tr>
+                                        <tr>
+                                            <td>硬限制</td>
+                                            <td id="processLimitHard">--</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
+    <script>
+        let autoRefreshInterval = null;
+
+        // 页面加载完成后初始化
+        $(document).ready(function() {
+            loadConfigs();
+            refreshData();
+            checkModules();
+            
+            // 自动刷新开关
+            $('#autoRefresh').change(function() {
+                if (this.checked) {
+                    startAutoRefresh();
+                } else {
+                    stopAutoRefresh();
+                }
+            });
+        });
+
+        // 加载配置列表
+        function loadConfigs() {
+            fetch('/configs')
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const configRows = doc.querySelectorAll('tbody tr');
+                    
+                    const select = document.getElementById('configSelect');
+                    select.innerHTML = '<option value="">选择配置...</option>';
+                    
+                    configRows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 2) {
+                            const configId = cells[0].textContent.trim();
+                            const configName = cells[1].textContent.trim();
+                            const option = document.createElement('option');
+                            option.value = configId;
+                            option.textContent = configName;
+                            select.appendChild(option);
+                        }
+                    });
+                })
+                .catch(error => console.error('加载配置失败:', error));
+        }
+
+        // 刷新系统数据
+        function refreshData() {
+            fetch('/api/system_info')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('获取系统信息失败:', data.error);
+                        return;
+                    }
+                    
+                    updateSystemMetrics(data);
+                    updateEnvironmentInfo(data);
+                    updatePathsStatus(data.paths);
+                    updateProcessLimits(data.limits);
+                })
+                .catch(error => console.error('刷新数据失败:', error));
+        }
+
+        // 更新系统指标
+        function updateSystemMetrics(data) {
+            // CPU
+            document.getElementById('cpuPercent').textContent = data.cpu.percent.toFixed(1) + '%';
+            document.getElementById('cpuInfo').textContent = data.cpu.count + ' 核心';
+            document.getElementById('cpuProgress').style.width = data.cpu.percent + '%';
+            document.getElementById('cpuProgress').textContent = data.cpu.percent.toFixed(1) + '%';
+
+            // 内存
+            document.getElementById('memoryPercent').textContent = data.memory.percent.toFixed(1) + '%';
+            document.getElementById('memoryInfo').textContent = data.memory.total_gb + ' GB';
+            document.getElementById('memoryProgress').style.width = data.memory.percent + '%';
+            document.getElementById('memoryProgress').textContent = data.memory.percent.toFixed(1) + '%';
+            document.getElementById('totalMemory').textContent = data.memory.total_gb + ' GB';
+            document.getElementById('availableMemory').textContent = data.memory.available_gb + ' GB';
+
+            // 磁盘
+            document.getElementById('diskPercent').textContent = data.disk.percent.toFixed(1) + '%';
+            document.getElementById('diskInfo').textContent = data.disk.total_gb + ' GB';
+            document.getElementById('diskProgress').style.width = data.disk.percent + '%';
+            document.getElementById('diskProgress').textContent = data.disk.percent.toFixed(1) + '%';
+            document.getElementById('totalDisk').textContent = data.disk.total_gb + ' GB';
+            document.getElementById('freeDisk').textContent = data.disk.free_gb + ' GB';
+
+            // 进程内存
+            document.getElementById('processMemory').textContent = data.process.memory_mb.toFixed(1);
+
+            // 网络
+            document.getElementById('networkSent').textContent = data.network.bytes_sent_mb.toFixed(1) + ' MB';
+            document.getElementById('networkRecv').textContent = data.network.bytes_recv_mb.toFixed(1) + ' MB';
+
+            // 最后更新
+            const timestamp = new Date(data.timestamp);
+            document.getElementById('lastUpdate').textContent = timestamp.toLocaleString();
+        }
+
+        // 更新环境信息
+        function updateEnvironmentInfo(data) {
+            document.getElementById('environment').textContent = data.environment.is_docker ? 'Docker容器' : '本地环境';
+            document.getElementById('pythonVersion').textContent = data.environment.python_version.split(' ')[0];
+            document.getElementById('workingDirectory').textContent = data.environment.working_directory;
+        }
+
+        // 更新路径状态
+        function updatePathsStatus(paths) {
+            const container = document.getElementById('pathsStatus');
+            container.innerHTML = '';
+            
+            Object.entries(paths).forEach(([path, status]) => {
+                const div = document.createElement('div');
+                div.className = 'd-flex justify-content-between align-items-center mb-2';
+                
+                const statusClass = status.exists ? 'status-ok' : 'status-error';
+                const statusText = status.exists ? '存在' : '不存在';
+                
+                div.innerHTML = `
+                    <div>
+                        <span class="status-indicator ${statusClass}"></span>
+                        <small>${path}</small>
+                    </div>
+                    <div>
+                        <small class="text-muted">${statusText}</small>
+                        ${status.permissions ? `<small class="text-muted ms-2">(${status.permissions})</small>` : ''}
+                    </div>
+                `;
+                
+                container.appendChild(div);
+            });
+        }
+
+        // 更新进程限制
+        function updateProcessLimits(limits) {
+            document.getElementById('fileLimitSoft').textContent = limits.file_descriptors.soft || '--';
+            document.getElementById('fileLimitHard').textContent = limits.file_descriptors.hard || '--';
+            document.getElementById('processLimitSoft').textContent = limits.processes.soft || '--';
+            document.getElementById('processLimitHard').textContent = limits.processes.hard || '--';
+        }
+
+        // 检查模块
+        function checkModules() {
+            fetch('/api/module_check')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('modulesStatus');
+                    container.innerHTML = '';
+                    
+                    Object.entries(data).forEach(([module, status]) => {
+                        const div = document.createElement('div');
+                        div.className = 'd-flex justify-content-between align-items-center mb-2';
+                        
+                        const statusClass = status.installed ? 'status-ok' : 'status-error';
+                        const statusText = status.installed ? '已安装' : '未安装';
+                        
+                        div.innerHTML = `
+                            <div>
+                                <span class="status-indicator ${statusClass}"></span>
+                                <small>${module}</small>
+                            </div>
+                            <div>
+                                <small class="text-muted">${statusText}</small>
+                            </div>
+                        `;
+                        
+                        container.appendChild(div);
+                    });
+                })
+                .catch(error => console.error('检查模块失败:', error));
+        }
+
+        // 测试WebDAV连接
+        function testWebDAV() {
+            const configId = document.getElementById('configSelect').value;
+            if (!configId) {
+                alert('请选择配置');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('webdavResult');
+            resultDiv.innerHTML = '<div class="text-muted">正在测试连接...</div>';
+            
+            fetch(`/api/webdav_test/${configId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-success">
+                                <strong>✅ ${data.message}</strong><br>
+                                <small>配置: ${data.config_name}</small><br>
+                                <small>地址: ${data.webdav_url}</small><br>
+                                <small>监控路径: ${data.monitor_path}</small><br>
+                                <small>目标目录: ${data.target_directory}</small><br>
+                                <small>根目录文件数: ${data.root_files_count}</small>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-danger">
+                                <strong>❌ ${data.message}</strong><br>
+                                <small>配置: ${data.config_name}</small><br>
+                                <small>地址: ${data.webdav_url}</small><br>
+                                <small>错误: ${data.error}</small>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>❌ 测试失败</strong><br>
+                            <small>错误: ${error.message}</small>
+                        </div>
+                    `;
+                });
+        }
+
+        // 开始自动刷新
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(refreshData, 5000); // 每5秒刷新一次
+        }
+
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+    </script>
+</body>
+</html>
