@@ -1535,6 +1535,63 @@ def check_modules():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/process_monitor')
+@login_required
+def get_process_info():
+    """获取进程监控信息API"""
+    try:
+        processes = []
+        
+        # 获取所有进程
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent', 'memory_percent', 'create_time', 'status']):
+            try:
+                proc_info = proc.info
+                
+                # 检查是否是Python进程
+                is_python = False
+                python_script = None
+                
+                if proc_info['name'] and 'python' in proc_info['name'].lower():
+                    is_python = True
+                    if proc_info['cmdline']:
+                        # 提取Python脚本名称
+                        cmdline = proc_info['cmdline']
+                        for i, arg in enumerate(cmdline):
+                            if arg.endswith('.py'):
+                                python_script = arg
+                                break
+                        if not python_script and len(cmdline) > 1:
+                            python_script = ' '.join(cmdline[1:])
+                
+                # 只返回Python进程或重要系统进程
+                if is_python or proc_info['name'] in ['python', 'python3', 'main.py', 'strm_validator.py']:
+                    processes.append({
+                        'pid': proc_info['pid'],
+                        'name': proc_info['name'],
+                        'cmdline': ' '.join(proc_info['cmdline']) if proc_info['cmdline'] else '',
+                        'python_script': python_script,
+                        'cpu_percent': round(proc_info['cpu_percent'], 1) if proc_info['cpu_percent'] else 0,
+                        'memory_percent': round(proc_info['memory_percent'], 1) if proc_info['memory_percent'] else 0,
+                        'create_time': datetime.fromtimestamp(proc_info['create_time']).strftime('%Y-%m-%d %H:%M:%S') if proc_info['create_time'] else '',
+                        'status': proc_info['status'],
+                        'is_python': is_python
+                    })
+                    
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+        
+        # 按CPU使用率排序
+        processes.sort(key=lambda x: x['cpu_percent'], reverse=True)
+        
+        return jsonify({
+            'processes': processes,
+            'total_count': len(processes),
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     logger, log_file = setup_logger('app')
     # 启动应用之前先检查更新

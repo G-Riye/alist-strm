@@ -216,20 +216,40 @@
             </div>
         </div>
 
-        <!-- 模块检查 -->
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card metric-card">
-                    <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-cube"></i> Python模块检查</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="modulesStatus">
-                            <!-- 动态加载模块状态 -->
-                        </div>
-                    </div>
-                </div>
-            </div>
+                 <!-- 模块检查和进程监控 -->
+         <div class="row mt-4">
+             <div class="col-md-6">
+                 <div class="card metric-card">
+                     <div class="card-header">
+                         <h5 class="mb-0"><i class="fas fa-cube"></i> Python模块检查</h5>
+                     </div>
+                     <div class="card-body">
+                         <div id="modulesStatus">
+                             <!-- 动态加载模块状态 -->
+                         </div>
+                     </div>
+                 </div>
+             </div>
+             
+             <div class="col-md-6">
+                 <div class="card metric-card">
+                     <div class="card-header">
+                         <h5 class="mb-0"><i class="fas fa-tasks"></i> 进程监控</h5>
+                     </div>
+                     <div class="card-body">
+                         <div class="mb-3">
+                             <button class="btn btn-primary btn-sm" onclick="refreshProcesses()">
+                                 <i class="fas fa-sync-alt"></i> 刷新进程
+                             </button>
+                             <small class="text-muted ms-2">显示Python相关进程</small>
+                         </div>
+                         <div id="processesStatus">
+                             <!-- 动态加载进程状态 -->
+                         </div>
+                     </div>
+                 </div>
+             </div>
+         </div>
 
             <!-- WebDAV连接测试 -->
             <div class="col-md-6">
@@ -303,21 +323,22 @@
          <script>
          let autoRefreshInterval = null;
 
-         // 页面加载完成后初始化
-         $(document).ready(function() {
-             loadConfigs();
-             refreshData();
-             checkModules();
-             
-             // 自动刷新开关
-             $('#autoRefresh').change(function() {
-                 if (this.checked) {
-                     startAutoRefresh();
-                 } else {
-                     stopAutoRefresh();
-                 }
-             });
-         });
+                   // 页面加载完成后初始化
+          $(document).ready(function() {
+              loadConfigs();
+              refreshData();
+              checkModules();
+              refreshProcesses();
+              
+              // 自动刷新开关
+              $('#autoRefresh').change(function() {
+                  if (this.checked) {
+                      startAutoRefresh();
+                  } else {
+                      stopAutoRefresh();
+                  }
+              });
+          });
 
          // 加载配置列表
          function loadConfigs() {
@@ -442,36 +463,97 @@
              document.getElementById('processLimitHard').textContent = limits.processes.hard || '--';
          }
 
-         // 检查模块
-         function checkModules() {
-             fetch('/api/module_check')
-                 .then(response => response.json())
-                 .then(data => {
-                     const container = document.getElementById('modulesStatus');
-                     container.innerHTML = '';
-                     
-                     Object.entries(data).forEach(([module, status]) => {
-                         const div = document.createElement('div');
-                         div.className = 'd-flex justify-content-between align-items-center mb-2';
-                         
-                         const statusClass = status.installed ? 'status-ok' : 'status-error';
-                         const statusText = status.installed ? '已安装' : '未安装';
-                         
-                         div.innerHTML = `
-                             <div>
-                                 <span class="status-indicator ${statusClass}"></span>
-                                 <small>${module}</small>
-                             </div>
-                             <div>
-                                 <small class="text-muted">${statusText}</small>
-                             </div>
-                         `;
-                         
-                         container.appendChild(div);
-                     });
-                 })
-                 .catch(error => console.error('检查模块失败:', error));
-         }
+                   // 检查模块
+          function checkModules() {
+              fetch('/api/module_check')
+                  .then(response => response.json())
+                  .then(data => {
+                      const container = document.getElementById('modulesStatus');
+                      container.innerHTML = '';
+                      
+                      Object.entries(data).forEach(([module, status]) => {
+                          const div = document.createElement('div');
+                          div.className = 'd-flex justify-content-between align-items-center mb-2';
+                          
+                          const statusClass = status.installed ? 'status-ok' : 'status-error';
+                          const statusText = status.installed ? '已安装' : '未安装';
+                          
+                          div.innerHTML = `
+                              <div>
+                                  <span class="status-indicator ${statusClass}"></span>
+                                  <small>${module}</small>
+                              </div>
+                              <div>
+                                  <small class="text-muted">${statusText}</small>
+                              </div>
+                          `;
+                          
+                          container.appendChild(div);
+                      });
+                  })
+                  .catch(error => console.error('检查模块失败:', error));
+          }
+
+          // 刷新进程监控
+          function refreshProcesses() {
+              fetch('/api/process_monitor')
+                  .then(response => response.json())
+                  .then(data => {
+                      const container = document.getElementById('processesStatus');
+                      container.innerHTML = '';
+                      
+                      if (data.error) {
+                          container.innerHTML = `<div class="text-danger">获取进程信息失败: ${data.error}</div>`;
+                          return;
+                      }
+                      
+                      if (data.processes.length === 0) {
+                          container.innerHTML = '<div class="text-muted">未找到Python相关进程</div>';
+                          return;
+                      }
+                      
+                      data.processes.forEach(process => {
+                          const div = document.createElement('div');
+                          div.className = 'border-bottom pb-2 mb-2';
+                          
+                          const statusClass = process.status === 'running' ? 'status-ok' : 'status-warning';
+                          const memoryColor = process.memory_percent > 10 ? 'text-danger' : process.memory_percent > 5 ? 'text-warning' : 'text-success';
+                          const cpuColor = process.cpu_percent > 50 ? 'text-danger' : process.cpu_percent > 20 ? 'text-warning' : 'text-success';
+                          
+                          div.innerHTML = `
+                              <div class="d-flex justify-content-between align-items-start">
+                                  <div class="flex-grow-1">
+                                      <div class="d-flex align-items-center mb-1">
+                                          <span class="status-indicator ${statusClass}"></span>
+                                          <strong class="me-2">PID: ${process.pid}</strong>
+                                          <span class="badge bg-primary">${process.name}</span>
+                                          ${process.is_python ? '<span class="badge bg-success ms-1">Python</span>' : ''}
+                                      </div>
+                                      ${process.python_script ? `<div class="small text-muted mb-1">脚本: ${process.python_script}</div>` : ''}
+                                      <div class="small">
+                                          <span class="${cpuColor}">CPU: ${process.cpu_percent}%</span> | 
+                                          <span class="${memoryColor}">内存: ${process.memory_percent}%</span> | 
+                                          <span class="text-muted">状态: ${process.status}</span>
+                                      </div>
+                                      <div class="small text-muted">启动时间: ${process.create_time}</div>
+                                  </div>
+                              </div>
+                          `;
+                          
+                          container.appendChild(div);
+                      });
+                      
+                      // 添加统计信息
+                      const totalDiv = document.createElement('div');
+                      totalDiv.className = 'mt-3 p-2 bg-light rounded';
+                      totalDiv.innerHTML = `<small class="text-muted">共找到 ${data.total_count} 个Python相关进程 | 最后更新: ${new Date(data.timestamp).toLocaleString()}</small>`;
+                      container.appendChild(totalDiv);
+                  })
+                  .catch(error => {
+                      console.error('获取进程信息失败:', error);
+                      document.getElementById('processesStatus').innerHTML = '<div class="text-danger">获取进程信息失败</div>';
+                  });
+          }
 
          // 测试WebDAV连接
          function testWebDAV() {
