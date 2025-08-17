@@ -150,38 +150,38 @@ def list_files_recursive_with_cache(webdav, directory, config, script_config, si
                 file_extension = os.path.splitext(f.name)[1].lower().lstrip('.')
                 time.sleep(interval)
                 # 根据不同格式执行不同操作
-                 if file_extension in script_config['video_formats']:
-                     logger.info(f"找到视频文件: {decoded_file_name}")
-                     video_file_counter += 1  # 增加视频文件计数
-                     create_strm_file(f.name, f.size, config, script_config['video_formats'], local_directory,
-                                      decoded_directory, size_threshold, logger, local_tree)
-                 # 检查本地目录树中是否已经存在文件，如果存在则跳过
-                 elif download_enabled and (
-                         file_extension in script_config['subtitle_formats'] or
-                         file_extension in script_config['image_formats'] or
-                         file_extension in script_config['metadata_formats']):
-                     relative_dir = os.path.relpath(local_directory, config['target_directory'])
-                     if relative_dir in local_tree and os.path.basename(decoded_file_name) in local_tree[relative_dir]:
-                         logger.info(f"跳过文件下载: {decoded_file_name}（本地已存在）")
-                         continue
+                if file_extension in script_config['video_formats']:
+                    logger.info(f"找到视频文件: {decoded_file_name}")
+                    video_file_counter += 1  # 增加视频文件计数
+                    create_strm_file(f.name, f.size, config, script_config['video_formats'], local_directory,
+                                     decoded_directory, size_threshold, logger, local_tree)
+                # 检查本地目录树中是否已经存在文件，如果存在则跳过
+                elif download_enabled and (
+                        file_extension in script_config['subtitle_formats'] or
+                        file_extension in script_config['image_formats'] or
+                        file_extension in script_config['metadata_formats']):
+                    relative_dir = os.path.relpath(local_directory, config['target_directory'])
+                    if relative_dir in local_tree and os.path.basename(decoded_file_name) in local_tree[relative_dir]:
+                        logger.info(f"跳过文件下载: {decoded_file_name}（本地已存在）")
+                        continue
 
-                     logger.info(f"找到需要下载的文件: {decoded_file_name}")
-                     total_download_file_counter += 1  # 记录需要下载的文件总数
-                     # 将下载任务加入队列（无需创建线程）
-                     download_queue.put((webdav, f.name, local_directory, f.size, config))
-                 else:
-                     # 记录跳过的文件信息
-                     if not download_enabled:
-                         if file_extension in script_config['subtitle_formats']:
-                             logger.info(f"跳过字幕文件: {decoded_file_name}（下载功能已禁用）")
-                         elif file_extension in script_config['image_formats']:
-                             logger.info(f"跳过图片文件: {decoded_file_name}（下载功能已禁用）")
-                         elif file_extension in script_config['metadata_formats']:
-                             logger.info(f"跳过元数据文件: {decoded_file_name}（下载功能已禁用）")
-                         else:
-                             logger.info(f"跳过非视频文件: {decoded_file_name}（格式: {file_extension}）")
-                     else:
-                         logger.info(f"跳过非目标文件: {decoded_file_name}（格式: {file_extension}）")
+                    logger.info(f"找到需要下载的文件: {decoded_file_name}")
+                    total_download_file_counter += 1  # 记录需要下载的文件总数
+                    # 将下载任务加入队列（无需创建线程）
+                    download_queue.put((webdav, f.name, local_directory, f.size, config))
+                else:
+                    # 记录跳过的文件信息
+                    if not download_enabled:
+                        if file_extension in script_config['subtitle_formats']:
+                            logger.info(f"跳过字幕文件: {decoded_file_name}（下载功能已禁用）")
+                        elif file_extension in script_config['image_formats']:
+                            logger.info(f"跳过图片文件: {decoded_file_name}（下载功能已禁用）")
+                        elif file_extension in script_config['metadata_formats']:
+                            logger.info(f"跳过元数据文件: {decoded_file_name}（下载功能已禁用）")
+                        else:
+                            logger.info(f"跳过非视频文件: {decoded_file_name}（格式: {file_extension}）")
+                    else:
+                        logger.info(f"跳过非目标文件: {decoded_file_name}（格式: {file_extension}）")
 
             file_tree.append(file_info)
 
