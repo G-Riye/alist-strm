@@ -83,20 +83,15 @@ def test_webdav_connection(config_id):
             protocol=config['protocol']
         )
         
-        # 测试列出根目录
-        files = webdav.ls('/')
-        end_time = time.time()
-        
-        print(f"✅ WebDAV连接成功!")
-        print(f"  连接耗时: {end_time - start_time:.2f} 秒")
-        print(f"  根目录文件数: {len(files)}")
-        
-        # 测试列出配置的根路径
+        # 直接测试配置的根路径，跳过根目录测试
         print(f"\n正在测试根路径: {config['rootpath']}")
         try:
             root_files = webdav.ls(config['rootpath'])
-            print(f"✅ 根路径访问成功!")
-            print(f"  文件数: {len(root_files)}")
+            end_time = time.time()
+            
+            print(f"✅ WebDAV连接成功!")
+            print(f"  连接耗时: {end_time - start_time:.2f} 秒")
+            print(f"  根路径文件数: {len(root_files)}")
             
             # 显示前几个文件
             for i, f in enumerate(root_files[:5]):

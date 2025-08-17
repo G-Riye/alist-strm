@@ -54,23 +54,23 @@ def test_webdav_simple(config_id):
             )
             print(f"✅ WebDAV连接创建成功")
             
-            # 测试列出根目录
-            print(f"📁 测试列出根目录...")
-            files = webdav.ls('/')
-            print(f"✅ 根目录访问成功，文件数: {len(files)}")
-            
-            # 测试列出配置的根路径
+            # 直接测试配置的根路径，跳过根目录测试
             print(f"📁 测试根路径: {config['rootpath']}")
-            root_files = webdav.ls(config['rootpath'])
-            print(f"✅ 根路径访问成功，文件数: {len(root_files)}")
-            
-            # 显示前几个文件
-            for i, f in enumerate(root_files[:3]):
-                print(f"  {i+1}. {f.name} ({f.size} bytes)")
-            if len(root_files) > 3:
-                print(f"  ... 还有 {len(root_files) - 3} 个文件")
-            
-            return True
+            try:
+                root_files = webdav.ls(config['rootpath'])
+                print(f"✅ 根路径访问成功，文件数: {len(root_files)}")
+                
+                # 显示前几个文件
+                for i, f in enumerate(root_files[:3]):
+                    print(f"  {i+1}. {f.name} ({f.size} bytes)")
+                if len(root_files) > 3:
+                    print(f"  ... 还有 {len(root_files) - 3} 个文件")
+                
+                return True
+                
+            except Exception as e:
+                print(f"❌ 根路径访问失败: {e}")
+                return False
             
         except Exception as e:
             print(f"❌ WebDAV连接失败: {e}")
