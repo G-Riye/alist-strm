@@ -15,8 +15,12 @@ from db_handler import DBHandler
 from logger import setup_logger
 from task_scheduler import add_tasks_to_cron, update_tasks_in_cron, delete_tasks_from_cron, list_tasks_in_cron, convert_to_cron_time, run_task_immediately
 import psutil
-import json
 from datetime import datetime
+# resource模块仅在Unix/Linux系统上可用
+try:
+    import resource
+except ImportError:
+    resource = None
 
 
 app = Flask(__name__)
@@ -1397,9 +1401,12 @@ def get_system_info():
         
         # 进程限制
         try:
-            import resource
-            file_limits = resource.getrlimit(resource.RLIMIT_NOFILE)
-            process_limits = resource.getrlimit(resource.RLIMIT_NPROC)
+            if resource is not None:
+                file_limits = resource.getrlimit(resource.RLIMIT_NOFILE)
+                process_limits = resource.getrlimit(resource.RLIMIT_NPROC)
+            else:
+                file_limits = (None, None)
+                process_limits = (None, None)
         except Exception as e:
             file_limits = (None, None)
             process_limits = (None, None)
@@ -1458,7 +1465,7 @@ def test_webdav_connection(config_id):
     """测试WebDAV连接API"""
     try:
         db = DBHandler()
-        config = db.get_config(config_id)
+        config = db.get_webdav_config(config_id)
         
         if not config:
             return jsonify({'error': f'未找到配置ID: {config_id}'}), 404
