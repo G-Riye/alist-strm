@@ -322,7 +322,7 @@ def edit_config(config_id):
             rootpath = request.form['rootpath']
             target_directory = request.form['target_directory']
             download_interval_range = request.form.get('download_interval_range', '1-3')  # 保持为字符串
-            download_enabled = int(request.form.get('download_enabled', 0))  # 获取是否启用下载功能，默认0（禁用）
+            download_enabled = int(request.form.get('download_enabled', 1))  # 获取是否启用下载功能，默认1（启用）
             update_mode = request.form['update_mode']  # 获取更新模式
             strm_suffix = request.form.get('strm_suffix', '-转码')  # 获取strm文件后缀
 
@@ -381,7 +381,7 @@ def new_config():
             rootpath = request.form['rootpath']
             target_directory = request.form['target_directory']
             download_interval_range = request.form.get('download_interval_range', '1-3')  # 保持为字符串
-            download_enabled = int(request.form.get('download_enabled', 0))  # 获取是否启用下载功能，默认0（禁用）
+            download_enabled = int(request.form.get('download_enabled', 1))  # 获取是否启用下载功能，默认1（启用）
             update_mode = request.form['update_mode']  # 获取更新模式
             strm_suffix = request.form.get('strm_suffix', '-转码')  # 获取strm文件后缀
 
