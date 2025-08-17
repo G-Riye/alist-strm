@@ -80,8 +80,7 @@ def test_webdav_connection(config_id):
             port=config['port'],
             username=config['username'],
             password=config['password'],
-            protocol=config['protocol'],
-            timeout=30
+            protocol=config['protocol']
         )
         
         # 测试列出根目录
