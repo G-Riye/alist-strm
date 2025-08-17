@@ -1545,7 +1545,11 @@ def get_process_info():
         # 获取所有进程
         for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cpu_percent', 'memory_percent', 'create_time', 'status']):
             try:
+                # 获取进程信息，并立即获取CPU使用率以避免sleep状态
                 proc_info = proc.info
+                # 立即获取CPU使用率，避免sleep状态
+                proc_info['cpu_percent'] = proc.cpu_percent()
+                proc_info['memory_percent'] = proc.memory_percent()
                 
                 # 检查是否是Python进程
                 is_python = False
